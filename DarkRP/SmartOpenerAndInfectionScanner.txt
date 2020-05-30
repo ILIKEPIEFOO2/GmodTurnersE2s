@@ -1,0 +1,526 @@
+@name VaultTecSmartInfectionOpener
+@inputs [MemberListScreen InfectionPercentScreen RulesScreen]:wirelink SeeThroughProps:array ExternalButtonUser:entity PreExistingDoors:array
+@outputs Alarm AuthList:array ButtonOutput DisableSecurityDoor
+@persist [Doors DoorStatus AuthList CheckPoints]:array
+@persist Update Distance Duration DoorAlpha AlarmDuration UnwantedPlayer:entity PreviousPercent LastCheckedPlayer:entity
+
+#----------------------------------------------Colour Seethrough Props-----------------------------------------
+
+function colourSeeThroughProps(){
+    for(I=1,SeeThroughProps:count()) {
+        Prop = SeeThroughProps[I, entity]
+        Prop:setMaterial("vgui/screens/vgui_overlay")
+        Prop:setAlpha(10)  
+    }
+}
+
+#----------------------------------------------Doors-----------------------------------------
+
+function addDoor(Door:entity){
+    IsValid = Door:isValid()
+
+    NotInTable = 1
+    if(Doors:getIndex(Door)){NotInTable = 0}
+
+    if(IsValid && NotInTable){
+        hint("Door added successfully!",5)
+        Doors:pushEntity(Door)
+    }
+    
+    if(!NotInTable){
+        hint("Entity is already a smart door.",5)
+    }
+}
+
+function removeDoor(Door:entity){
+    EntIndex = Doors:getIndex(Door)
+
+    if(EntIndex > 0){
+        hint("Door removed successfully!",5)
+        Doors:removeEntity(EntIndex)
+    }else{
+        hint("Entity is not a smart door.",5)
+    }  
+}
+
+#----------------------------------------------Get Disease-----------------------------------------
+
+function string getDisease(Code:number){
+    switch (Code) {
+        case 1, return "A Cold" break 
+        case 2, return "Sars" break 
+        case 3, return "COVID19" break 
+        case 4, return "Eye Cancer" break 
+        case 5, return "Ebola" break 
+        case 6, return "An Explosive Headache" break 
+        case 7, return "Fire Resistance" break 
+        case 8, return "A Mobility Boost" break 
+        case 9, return "Super Legs" break 
+        case 10, return "Invinsibillity" break 
+        default, return "VOID" break 
+    }
+}
+
+#----------------------------------------------CheckPoints-----------------------------------------
+
+function addCheckPoint(CheckPoint:entity){
+    IsValid = CheckPoint:isValid()
+
+    NotInTable = 1
+    if(CheckPoints:getIndex(CheckPoint)){NotInTable = 0}
+
+    if(IsValid && NotInTable){
+        hint("CheckPoint added successfully!",5)
+        CheckPoints:pushEntity(CheckPoint)
+    }
+    
+    if(!NotInTable){
+        hint("Entity is already a CheckPoint.",5)
+    }
+}
+
+function removeCheckPoint(CheckPoint:entity){
+    EntIndex = CheckPoints:getIndex(CheckPoint)
+
+    if(EntIndex > 0){
+        hint("CheckPoint removed successfully!",5)
+        CheckPoints:removeEntity(EntIndex)
+    }else{
+        hint("Entity is not a CheckPoint.",5)
+    }  
+}
+
+#----------------------------------------------Screen-----------------------------------------
+
+function createTimerScreen(){  
+    BackgroundBlue = vec(0,0,40)
+    ForegroundBlue = vec(0,100,180)
+    White = vec(255,255,255)
+    Black = vec(0,0,0)
+    Grey = vec(80,80,80)
+    
+    InfectionPercentScreen:egpClear()
+    InfectionPercentScreen:egpDrawTopLeft(1)
+    
+    InfectionPercentScreen:egpBox(1,vec2(0,0),vec2(512,512))
+    InfectionPercentScreen:egpColor(1,BackgroundBlue)
+                
+    InfectionPercentScreen:egpCircle(2,vec2(256,300),vec2(93,93))
+    InfectionPercentScreen:egpColor(2,Black)
+    
+    StartVal= 0
+    InfectionPercentScreen:egpWedge(4,vec2(256,300),vec2(90,90))
+    InfectionPercentScreen:egpColor(4,vec((100-StartVal)*2.55,StartVal*2.55,0))
+    InfectionPercentScreen:egpAngle(4,90)
+    InfectionPercentScreen:egpSize(4,-(StartVal*3.6))
+    
+    if (StartVal >= 100) {InfectionPercentScreen:egpSize(4,360)}
+    if (StartVal < 1) {InfectionPercentScreen:egpSize(4,-0.1)}
+    
+    InfectionPercentScreen:egpCircle(5,vec2(256,300),vec2(76,76))
+    InfectionPercentScreen:egpColor(5,Black)
+    
+    InfectionPercentScreen:egpWedge(6,vec2(256,300),vec2(72,72))
+    InfectionPercentScreen:egpColor(6,White)
+    InfectionPercentScreen:egpAngle(6,90)
+    InfectionPercentScreen:egpSize(6,360)
+    if (StartVal < 1) {InfectionPercentScreen:egpColor(6,Grey)}
+    
+    InfectionPercentScreen:egpCircle(7,vec2(256,300),vec2(64,64))
+    InfectionPercentScreen:egpColor(7,Black)
+        
+    for (LineNum = 8,31) {
+        InfectionPercentScreen:egpBox(LineNum,vec2(256,300),vec2(90,4))
+        InfectionPercentScreen:egpColor(LineNum,Black)
+        InfectionPercentScreen:egpAngle(LineNum,(LineNum-8)*15)
+    }
+    
+    InfectionPercentScreen:egpText(100,"Infected Percent", vec2(30,20))
+    InfectionPercentScreen:egpSize(100,60)
+
+    InfectionPercentScreen:egpText(101,"0%", vec2(230, 275))
+    InfectionPercentScreen:egpSize(101,45) 
+}
+
+function rulesScreen(){
+    BackgroundBlue = vec(0,0,40)
+        
+    RulesScreen:egpClear()
+    RulesScreen:egpDrawTopLeft(1)
+    RulesScreen:egpBox(1,vec2(0,0),vec2(512,512))
+    RulesScreen:egpColor(1,BackgroundBlue)
+    
+    RulesScreen:egpText(2,"Disclaimer", vec2(100, 10))
+    RulesScreen:egpSize(2,75)
+
+    RulesScreen:egpText(3,"Anyone may enter but we may kill for the following reasons:", vec2(10, 100))
+    RulesScreen:egpSize(3,20)
+    
+    RulesScreen:egpText(4,"> Being infected.", vec2(10, 130))
+    RulesScreen:egpSize(4,20)
+    
+    RulesScreen:egpText(5,"> Spreading diseases.", vec2(10, 160))
+    RulesScreen:egpSize(5,20)
+    
+    RulesScreen:egpText(6,"> Weapons out.", vec2(10, 190))
+    RulesScreen:egpSize(6,20)
+    
+    RulesScreen:egpText(7,"> Lingering at the front gate.", vec2(10, 220))
+    RulesScreen:egpSize(7,20)
+    
+    RulesScreen:egpText(8,"You may not RAID/MUG/HARM others inside.", vec2(10, 280))
+    RulesScreen:egpSize(8,20)
+    
+    RulesScreen:egpText(9,"NO GOVERNMENT", vec2(10, 310))
+    RulesScreen:egpSize(9,20)
+    
+    RulesScreen:egpText(10,"NO GENETIC RESEARCH PERMITTED", vec2(10, 340))
+    RulesScreen:egpSize(10,20)
+}
+
+#----------------------------------------------Add Existing Doors-----------------------------------------
+
+function addExistingDoors(){
+    for(I=1,PreExistingDoors:count()) {
+        addDoor(PreExistingDoors[I,entity])
+    }
+}
+
+#----------------------------------------------Update Users-----------------------------------------
+
+function updateUsers(){
+    MemberListScreen:egpText(8,"1) " + AuthList[1,entity]:name(),vec2(30,140))
+    MemberListScreen:egpText(9,"2) " + AuthList[2,entity]:name(),vec2(30,170))
+    MemberListScreen:egpText(10,"3) " + AuthList[3,entity]:name(),vec2(30,200))
+    MemberListScreen:egpText(11,"4) " + AuthList[4,entity]:name(),vec2(30,230))
+    MemberListScreen:egpText(12,"5) " + AuthList[5,entity]:name(),vec2(30,260))
+    MemberListScreen:egpText(13,"6) " + AuthList[6,entity]:name(),vec2(30,290))
+    MemberListScreen:egpText(14,"7) " + AuthList[7,entity]:name(),vec2(30,320))
+    MemberListScreen:egpText(15,"8) " + AuthList[8,entity]:name(),vec2(30,350))
+    MemberListScreen:egpText(16,"9) " + AuthList[9,entity]:name(),vec2(30,380))
+    MemberListScreen:egpText(17,"10) " + AuthList[10,entity]:name(),vec2(30,410))
+}
+
+#----------------------------------------------Add Users Screen-----------------------------------------
+
+function createScreen(){
+    #----------------------------Colours---------------------------------------
+    
+    Black = vec(0,0,0)
+    White = vec(255,255,255) 
+    
+    #----------------------------Screen---------------------------------------  
+    
+    MemberListScreen:egpClear()
+    
+    MemberListScreen:egpDrawTopLeft(1)
+    MemberListScreen:egpBox(1,vec2(0,0),vec2(512,512))
+    MemberListScreen:egpColor(1,Black)
+    
+    MemberListScreen:egpDrawTopLeft(2)
+    MemberListScreen:egpBoxOutline(2,vec2(0,0),vec2(512,512))
+    MemberListScreen:egpColor(2,Black)
+    MemberListScreen:egpSize(2,10)
+    
+    MemberListScreen:egpDrawTopLeft(3)
+    MemberListScreen:egpBox(3,vec2(10,10),vec2(492,120))
+    MemberListScreen:egpColor(3,White)
+    MemberListScreen:egpSize(3,30)
+    
+    MemberListScreen:egpDrawTopLeft(4)
+    MemberListScreen:egpLine(4,vec2(10,130),vec2(502,130))
+    MemberListScreen:egpColor(4,Black)
+    MemberListScreen:egpSize(4,10)
+    
+    MemberListScreen:egpDrawTopLeft(5)
+    MemberListScreen:egpTriangle(5,vec2(30,100),vec2(125,100),vec2(75,20))
+    
+    MemberListScreen:egpDrawTopLeft(6)
+    MemberListScreen:egpText(6, "Members", vec2(142,40))
+    MemberListScreen:egpColor(6,Black)
+    MemberListScreen:egpSize(6,50)
+    MemberListScreen:egpFont(6,"Trebuchet")
+    
+    MemberListScreen:egpDrawTopLeft(7)
+    MemberListScreen:egpText(7,">",vec2(62,14))
+    MemberListScreen:egpColor(7,Black)
+    MemberListScreen:egpSize(7,96)
+    
+    MemberListScreen:egpText(28,"",vec2(80,430))
+    MemberListScreen:egpText(29,"",vec2(70,450))
+    MemberListScreen:egpText(30,"Commands: !ap !rp !ad",vec2(30,455))
+}
+
+#----------------------------------------------Reset All-----------------------------------------
+
+function resetEverything(){
+    Update = 300
+    Distance = 30
+    DoorAlpha = 150
+    Duration = 6
+    AlarmDuration = 10
+    PreviousPercent = 0
+    DisableSecurityDoor = 1
+
+    Alarm = 0
+    
+    Doors = array()
+    CheckPoints = array()
+    DoorStatus = array()
+}
+
+#----------------------------------------------First Spawned-----------------------------------------
+
+if (first()|dupefinished()){
+    runOnDisconnect(1)
+    runOnChat(1)
+    
+    resetEverything()
+    createScreen()
+    colourSeeThroughProps()
+    addExistingDoors()
+    timer("update",Update)
+    
+    createTimerScreen()
+    rulesScreen()
+    timer("update10Seconds", 1000) 
+}
+
+#----------------------------------------------Changed Events-----------------------------------------
+
+if(changed(AuthList:count())){
+    updateUsers()
+}
+
+if(changed(PreExistingDoors:count())){
+    addExistingDoors()
+}
+
+if(changed(MemberListScreen)){
+    createScreen() 
+}
+
+if(changed(SeeThroughProps:count())){
+    colourSeeThroughProps() 
+}
+
+if(changed(InfectionPercentScreen)){
+    createTimerScreen() 
+}
+
+if(changed(RulesScreen)){
+    rulesScreen()
+}
+
+if(changed(UnwantedPlayer) && UnwantedPlayer:isPlayer() && UnwantedPlayer != owner()){
+    print(UnwantedPlayer:name() + " is at a door.")
+}
+
+#---------------------------------------------Chat Functions----------------------------------------
+
+S = owner():lastSaid():lower():explode(" ")
+
+if(S[1,string]=="!ap" & chatClk(owner())){
+    TP = findPlayerByName(S[2,string])
+    InList = 0
+    
+    for(Y = 1, AuthList:count()){
+        if(TP == AuthList[Y,entity]){
+            InList = 1
+        }
+    }
+    
+    if(TP:isPlayer() && !InList){
+        hint("Player added successfully!",5)
+        AuthList:pushEntity(TP)
+    }
+    
+    if(InList){
+        hint("Player already on list.",5)
+    }
+}
+
+if(S[1,string]=="!rp"& chatClk(owner())){
+    TP = findPlayerByName(S[2,string])
+    if(TP:isPlayer()){
+        for(Y = 1, AuthList:count()){
+            if(TP == AuthList[Y,entity]){
+                hint("Player removed successfully!",5)
+                AuthList:remove(Y)
+            }
+        }
+    }
+}
+
+if(S[1,string]=="!ad" & chatClk(owner())){
+    NewDoor = owner():aimEntity()
+    addDoor(NewDoor)
+}
+
+if(S[1,string]=="!rd" & chatClk(owner())){
+    NewDoor = owner():aimEntity()
+    removeDoor(NewDoor)
+}
+
+if(S[1,string]=="!acp" & chatClk(owner())){
+    NewCheckPoint = owner():aimEntity()
+    addCheckPoint(NewCheckPoint)
+}
+
+if(S[1,string]=="!rcp" & chatClk(owner())){
+    NewCheckPoint = owner():aimEntity()
+    removeCheckPoint(NewCheckPoint)
+}
+
+#---------------------------------------------Buttn----------------------------------------
+
+if(changed(ExternalButtonUser) && ExternalButtonUser:toString() != "[NULL Entity]"){
+    Output = 0
+    
+    for(I=1, AuthList:count()){
+        CheckPlayer = AuthList[I, entity]
+        if(CheckPlayer == ExternalButtonUser){Output = 1}
+    }
+    
+    if(Output){ButtonOutput = 1 timer("Buttonoff", 10)}
+}
+
+#----------------------------------------------Check Players-----------------------------------------
+
+function checkPlayers(){
+    Players = players()
+    PlayerCount = Players:count()
+    InfectedPlayers = 0
+
+    foreach(X, Player:entity = Players){
+        #print("Test: " + X)
+        InfectionCode = Player:virus():toNumber()
+
+        LastCheckedPlayer = Player
+        
+        if(InfectionCode != -1 && InfectionCode < 7){
+            InfectedPlayers++
+        }
+    }
+    
+    if(InfectedPlayers !=0){Percent = round((InfectedPlayers/PlayerCount)*100)}else{Percent=0}
+    
+    Message = InfectedPlayers + " Out Of " + PlayerCount + " infected"
+    
+    InfectionPercentScreen:egpText(102,Message, vec2(80,420))
+    InfectionPercentScreen:egpSize(102,40)
+    
+    if(Percent != PreviousPercent){
+        if(Percent == 0){concmd("say /advert There are currently no remaining infected")}   
+        if(PreviousPercent == 0){concmd("say /advert Someone has been infected with a new disease")}
+        PreviousPercent = Percent
+    }
+
+    InfectionPercentScreen:egpColor(4,vec(Percent*2.55,(100-Percent)*2.55,0))
+    InfectionPercentScreen:egpSize(4,-(Percent*3.6))
+    
+    if(Percent < 10){
+        InfectionPercentScreen:egpText(101,Percent:toString()+"%", vec2(230, 275))
+    }elseif(Percent < 100){
+        InfectionPercentScreen:egpText(101,Percent:toString()+"%", vec2(220, 275))
+    }else{
+        InfectionPercentScreen:egpText(101,Percent:toString()+"%", vec2(200, 275))
+    }
+}
+
+#---------------------------------------------Check For Players----------------------------------------
+
+if(clk("update")) {
+    for(I=1,Doors:count()){
+        Door = Doors[I,entity]
+        Auth = 0
+        
+        findIncludeClass("player")
+        findInSphere(Door:massCenter(), Distance)
+        Player = findClosest(Door:massCenter())
+
+        if(Player){
+            for(X=1,AuthList:count()){
+                if(Player == AuthList[X, entity]){
+                    Auth = 1
+                }
+            }
+
+            if(Auth){
+                Door:setAlpha(DoorAlpha)
+                Door:noCollideAll(1)
+                timer("DoorClose"+Door:id(), Duration*1000)
+            }else{
+                stoptimer("TurnOffAlarm")
+                timer("TurnOffAlarm", AlarmDuration*1000)
+                Alarm = 1
+                UnwantedPlayer = Player
+            }
+        }else{
+            UnwantedPlayer == owner()
+        }
+    }
+    
+    for(I=1,CheckPoints:count()){
+        CheckPoint = CheckPoints[I,entity]
+        InfectionCode = 0
+        
+        findIncludeClass("player")
+        findInSphere(CheckPoint:massCenter(), Distance)
+        Player = findClosest(CheckPoint:massCenter())
+
+        if(Player:isPlayer() && Player != LastCheckedPlayer){
+            InfectionCode = Player:virus():toNumber()
+            LastCheckedPlayer = Player
+            
+            if(InfectionCode != -1 && InfectionCode < 7){
+                CheckPoint:soundPlay(1,1,"ambient/alarms/klaxon1.wav")  
+                concmd("say /p WARNING: " + Player:name() + " is infected with " + getDisease(InfectionCode) + " at CheckPoint " + I)
+                
+                if(I == 1){
+                    DisableSecurityDoor = 0
+                    timer("enableSecurityDoor", 5000)
+                }
+            }else{
+                CheckPoint:soundPlay(1,1,"tools/ifm/beep.wav")   
+            }
+        }
+    }
+
+    timer("update", Update)
+}
+
+for(K = 1,Doors:count()) {
+    if(clk("DoorClose"+Doors[K,entity]:id():toString())) { 
+        Doors[K,entity]:setAlpha(255)    
+        Doors[K,entity]:noCollideAll(0)
+    }   
+}
+
+if(clk("TurnOffAlarm")){
+    Alarm = 0
+}
+
+if(clk("Buttonoff")){
+    ButtonOutput = 0
+}
+
+if(clk("enableSecurityDoor")) {
+    DisableSecurityDoor = 1
+}
+
+if(clk("update10Seconds")) {
+    checkPlayers()
+    timer("update10Seconds", 10000) 
+}
+
+if(disconnectClk()){
+    Player = lastDisconnectedPlayer()
+    
+    for(Y = 1, AuthList:count()){
+        if(Player == AuthList[Y,entity]){
+            hint("Player Disconnected!",5)
+            AuthList:remove(Y)
+        }
+    }
+}
