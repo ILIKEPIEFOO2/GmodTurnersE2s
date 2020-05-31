@@ -1,50 +1,47 @@
 @name VaultTecSmartInfectionOpener
-@inputs [MemberListScreen InfectionPercentScreen RulesScreen]:wirelink SeeThroughProps:array ExternalButtonUser:entity PreExistingDoors:array
-@outputs Alarm AuthList:array ButtonOutput DisableSecurityDoor
-@persist [Doors DoorStatus AuthList CheckPoints]:array
-@persist Update Distance Duration DoorAlpha AlarmDuration UnwantedPlayer:entity PreviousPercent LastCheckedPlayer:entity
+@inputs [MemberListScreen InfectionPercentScreen]:wirelink
+@persist AuthList:array
+@persist DoorEntities:table DoorLookupArray:array CheckDiseasesUpdate
+@persist Update InfectionCodeMax Distance OpenDoorDuration DoorAlpha UnwantedPlayer:entity PreviousPercent LastCheckedPlayer:entity
 
-#----------------------------------------------Colour Seethrough Props-----------------------------------------
+#----------------------------------------------Instructions-----------------------------------------
+# Report any issues to: Turner605#6669
 
-function colourSeeThroughProps(){
-    for(I=1,SeeThroughProps:count()) {
-        Prop = SeeThroughProps[I, entity]
-        Prop:setMaterial("vgui/screens/vgui_overlay")
-        Prop:setAlpha(10)  
-    }
-}
+# Props can be added as both smart doors and infection scanners or just one type
+# More than 10 players can be added but past 10 they will not show up
 
-#----------------------------------------------Doors-----------------------------------------
+# Chat ommands (Note - commands do not include the brackets):
+# Add player: !ap PLAYER
+# Remove player: !rp PLAYER
+# Add entity as door/scanner: !ad scanner door
+# Add entity as door: !ad door
+# Add entity as scanner: !ad scanner
 
-function addDoor(Door:entity){
-    IsValid = Door:isValid()
+#----------------------------------------------Coming soon-----------------------------------------
+# Ability to show more than 10 players
+# Notifcations when party members become infected
+# Support for removed props
+# Ability to change variables via chat commands
+# Ability to add player you're looking at
+# Ability to add whole party at once
 
-    NotInTable = 1
-    if(Doors:getIndex(Door)){NotInTable = 0}
-
-    if(IsValid && NotInTable){
-        hint("Door added successfully!",5)
-        Doors:pushEntity(Door)
-    }
+#----------------------------------------------Reset All-----------------------------------------
+function resetEverything(){
     
-    if(!NotInTable){
-        hint("Entity is already a smart door.",5)
-    }
-}
+#---------------------------Change--------------------------
+    Update = 0.3
+    CheckDiseasesUpdate = 10
+    Distance = 30
+    DoorAlpha = 150
+    OpenDoorDuration = 6 
+    InfectionCodeMax = 7
+    AdvertNewInfections = 0
 
-function removeDoor(Door:entity){
-    EntIndex = Doors:getIndex(Door)
-
-    if(EntIndex > 0){
-        hint("Door removed successfully!",5)
-        Doors:removeEntity(EntIndex)
-    }else{
-        hint("Entity is not a smart door.",5)
-    }  
+#-------------------------Dont Touch------------------------
+    PreviousPercent = 0
 }
 
 #----------------------------------------------Get Disease-----------------------------------------
-
 function string getDisease(Code:number){
     switch (Code) {
         case 1, return "A Cold" break 
@@ -61,38 +58,46 @@ function string getDisease(Code:number){
     }
 }
 
-#----------------------------------------------CheckPoints-----------------------------------------
+#----------------------------------------------Doors-----------------------------------------
 
-function addCheckPoint(CheckPoint:entity){
-    IsValid = CheckPoint:isValid()
-
-    NotInTable = 1
-    if(CheckPoints:getIndex(CheckPoint)){NotInTable = 0}
-
-    if(IsValid && NotInTable){
-        hint("CheckPoint added successfully!",5)
-        CheckPoints:pushEntity(CheckPoint)
-    }
-    
-    if(!NotInTable){
-        hint("Entity is already a CheckPoint.",5)
-    }
+function number findDoor(Door:entity){
+    EntIndex = DoorLookupArray:getIndex(Door)
+    return EntIndex
 }
 
-function removeCheckPoint(CheckPoint:entity){
-    EntIndex = CheckPoints:getIndex(CheckPoint)
+function addDoor(Door:entity, SmartDoor:number, Scanner:number){
+    IsValid = Door:isValid()
+    IsOwnersProp = (Door:owner() == owner())
+    IsInTable = findDoor(Door)>0
+    IsScanner = Scanner>0
+    IsSmartDoor = SmartDoor>0
+    
+    if(IsValid && !IsInTable && IsOwnersProp){
+        DoorEntities:pushArray(array(Door, IsSmartDoor, IsScanner))
+        DoorLookupArray:pushEntity(Door)
+        hint("Door added successfully!",5)
+    }
+    
+    if(IsInTable){hint("Entity is already a smart door.",5)}
+    if(!IsOwnersProp){hint("Entity is not owned by you.",5)}
+    if(!IsValid){hint("Entity is not valid.",5)} 
+}
 
-    if(EntIndex > 0){
-        hint("CheckPoint removed successfully!",5)
-        CheckPoints:removeEntity(EntIndex)
+function removeDoor(Door:entity){    
+    IsInTable = findDoor(Door)
+    
+    if(IsInTable){
+        hint("Door removed successfully!",5)
+        DoorEntities:removeArray(IsInTable)
+        DoorLookupArray:removeEntity(IsInTable)
     }else{
-        hint("Entity is not a CheckPoint.",5)
-    }  
+        hint("Entity is not a smart door.",5)
+    }
 }
 
 #----------------------------------------------Screen-----------------------------------------
 
-function createTimerScreen(){  
+function createTimerScreen(){
     BackgroundBlue = vec(0,0,40)
     ForegroundBlue = vec(0,100,180)
     White = vec(255,255,255)
@@ -140,50 +145,6 @@ function createTimerScreen(){
 
     InfectionPercentScreen:egpText(101,"0%", vec2(230, 275))
     InfectionPercentScreen:egpSize(101,45) 
-}
-
-function rulesScreen(){
-    BackgroundBlue = vec(0,0,40)
-        
-    RulesScreen:egpClear()
-    RulesScreen:egpDrawTopLeft(1)
-    RulesScreen:egpBox(1,vec2(0,0),vec2(512,512))
-    RulesScreen:egpColor(1,BackgroundBlue)
-    
-    RulesScreen:egpText(2,"Disclaimer", vec2(100, 10))
-    RulesScreen:egpSize(2,75)
-
-    RulesScreen:egpText(3,"Anyone may enter but we may kill for the following reasons:", vec2(10, 100))
-    RulesScreen:egpSize(3,20)
-    
-    RulesScreen:egpText(4,"> Being infected.", vec2(10, 130))
-    RulesScreen:egpSize(4,20)
-    
-    RulesScreen:egpText(5,"> Spreading diseases.", vec2(10, 160))
-    RulesScreen:egpSize(5,20)
-    
-    RulesScreen:egpText(6,"> Weapons out.", vec2(10, 190))
-    RulesScreen:egpSize(6,20)
-    
-    RulesScreen:egpText(7,"> Lingering at the front gate.", vec2(10, 220))
-    RulesScreen:egpSize(7,20)
-    
-    RulesScreen:egpText(8,"You may not RAID/MUG/HARM others inside.", vec2(10, 280))
-    RulesScreen:egpSize(8,20)
-    
-    RulesScreen:egpText(9,"NO GOVERNMENT", vec2(10, 310))
-    RulesScreen:egpSize(9,20)
-    
-    RulesScreen:egpText(10,"NO GENETIC RESEARCH PERMITTED", vec2(10, 340))
-    RulesScreen:egpSize(10,20)
-}
-
-#----------------------------------------------Add Existing Doors-----------------------------------------
-
-function addExistingDoors(){
-    for(I=1,PreExistingDoors:count()) {
-        addDoor(PreExistingDoors[I,entity])
-    }
 }
 
 #----------------------------------------------Update Users-----------------------------------------
@@ -248,25 +209,7 @@ function createScreen(){
     
     MemberListScreen:egpText(28,"",vec2(80,430))
     MemberListScreen:egpText(29,"",vec2(70,450))
-    MemberListScreen:egpText(30,"Commands: !ap !rp !ad",vec2(30,455))
-}
-
-#----------------------------------------------Reset All-----------------------------------------
-
-function resetEverything(){
-    Update = 300
-    Distance = 30
-    DoorAlpha = 150
-    Duration = 6
-    AlarmDuration = 10
-    PreviousPercent = 0
-    DisableSecurityDoor = 1
-
-    Alarm = 0
-    
-    Doors = array()
-    CheckPoints = array()
-    DoorStatus = array()
+    MemberListScreen:egpText(30,"Commands: !ap !rp !ad !rd",vec2(30,455))
 }
 
 #----------------------------------------------First Spawned-----------------------------------------
@@ -277,13 +220,10 @@ if (first()|dupefinished()){
     
     resetEverything()
     createScreen()
-    colourSeeThroughProps()
-    addExistingDoors()
-    timer("update",Update)
+    timer("update",Update*1000)
     
     createTimerScreen()
-    rulesScreen()
-    timer("update10Seconds", 1000) 
+    timer("CheckDiseasesUpdate", 1000) 
 }
 
 #----------------------------------------------Changed Events-----------------------------------------
@@ -292,24 +232,12 @@ if(changed(AuthList:count())){
     updateUsers()
 }
 
-if(changed(PreExistingDoors:count())){
-    addExistingDoors()
-}
-
 if(changed(MemberListScreen)){
     createScreen() 
 }
 
-if(changed(SeeThroughProps:count())){
-    colourSeeThroughProps() 
-}
-
 if(changed(InfectionPercentScreen)){
     createTimerScreen() 
-}
-
-if(changed(RulesScreen)){
-    rulesScreen()
 }
 
 if(changed(UnwantedPlayer) && UnwantedPlayer:isPlayer() && UnwantedPlayer != owner()){
@@ -319,16 +247,11 @@ if(changed(UnwantedPlayer) && UnwantedPlayer:isPlayer() && UnwantedPlayer != own
 #---------------------------------------------Chat Functions----------------------------------------
 
 S = owner():lastSaid():lower():explode(" ")
+AllS = owner():lastSaid():lower()
 
 if(S[1,string]=="!ap" & chatClk(owner())){
     TP = findPlayerByName(S[2,string])
-    InList = 0
-    
-    for(Y = 1, AuthList:count()){
-        if(TP == AuthList[Y,entity]){
-            InList = 1
-        }
-    }
+    InList = AuthList:getIndex(TP)
     
     if(TP:isPlayer() && !InList){
         hint("Player added successfully!",5)
@@ -353,36 +276,20 @@ if(S[1,string]=="!rp"& chatClk(owner())){
 }
 
 if(S[1,string]=="!ad" & chatClk(owner())){
+    SmartDoor = AllS:find("door")
+    ScannerDoor = AllS:find("scanner")
     NewDoor = owner():aimEntity()
-    addDoor(NewDoor)
+    
+    if(SmartDoor || ScannerDoor){
+        addDoor(NewDoor, SmartDoor, ScannerDoor)
+    }else{
+        hint("INVALID! Please state what kind of door you want.",5)
+    }
 }
 
 if(S[1,string]=="!rd" & chatClk(owner())){
     NewDoor = owner():aimEntity()
     removeDoor(NewDoor)
-}
-
-if(S[1,string]=="!acp" & chatClk(owner())){
-    NewCheckPoint = owner():aimEntity()
-    addCheckPoint(NewCheckPoint)
-}
-
-if(S[1,string]=="!rcp" & chatClk(owner())){
-    NewCheckPoint = owner():aimEntity()
-    removeCheckPoint(NewCheckPoint)
-}
-
-#---------------------------------------------Buttn----------------------------------------
-
-if(changed(ExternalButtonUser) && ExternalButtonUser:toString() != "[NULL Entity]"){
-    Output = 0
-    
-    for(I=1, AuthList:count()){
-        CheckPlayer = AuthList[I, entity]
-        if(CheckPlayer == ExternalButtonUser){Output = 1}
-    }
-    
-    if(Output){ButtonOutput = 1 timer("Buttonoff", 10)}
 }
 
 #----------------------------------------------Check Players-----------------------------------------
@@ -393,7 +300,6 @@ function checkPlayers(){
     InfectedPlayers = 0
 
     foreach(X, Player:entity = Players){
-        #print("Test: " + X)
         InfectionCode = Player:virus():toNumber()
 
         LastCheckedPlayer = Player
@@ -410,9 +316,9 @@ function checkPlayers(){
     InfectionPercentScreen:egpText(102,Message, vec2(80,420))
     InfectionPercentScreen:egpSize(102,40)
     
-    if(Percent != PreviousPercent){
-        if(Percent == 0){concmd("say /advert There are currently no remaining infected")}   
-        if(PreviousPercent == 0){concmd("say /advert Someone has been infected with a new disease")}
+    if((Percent != PreviousPercent) && AdvertNewInfections){
+        if(Percent == 0){concmd("say /p There are currently no remaining infected")}   
+        if(PreviousPercent == 0){concmd("say /p Someone has been infected with a new disease")}
         PreviousPercent = Percent
     }
 
@@ -431,95 +337,71 @@ function checkPlayers(){
 #---------------------------------------------Check For Players----------------------------------------
 
 if(clk("update")) {
-    for(I=1,Doors:count()){
-        Door = Doors[I,entity]
-        Auth = 0
-        
-        findIncludeClass("player")
-        findInSphere(Door:massCenter(), Distance)
-        Player = findClosest(Door:massCenter())
+    for(I=1, DoorLookupArray:count()){
+        DoorDataArray = DoorEntities[I,array]
+        DoorEnt = DoorDataArray[1, entity]
+        IsSmartDoor = DoorDataArray[2, number]
+        IsScanner = DoorDataArray[3, number]
 
-        if(Player){
-            for(X=1,AuthList:count()){
-                if(Player == AuthList[X, entity]){
-                    Auth = 1
+        InfectionCode = 0
+
+        findIncludeClass("player")
+        findInSphere(DoorEnt:massCenter(), Distance)
+        Player = findClosest(DoorEnt:massCenter())
+
+        if(Player:isPlayer()){
+            if(IsSmartDoor){
+                if(AuthList:getIndex(Player)){
+                    DoorEnt:setAlpha(DoorAlpha)
+                    DoorEnt:noCollideAll(1)
+                    timer("DoorClose"+DoorEnt:id(), OpenDoorDuration*1000)
+                }else{
+                    UnwantedPlayer = Player
                 }
             }
-
-            if(Auth){
-                Door:setAlpha(DoorAlpha)
-                Door:noCollideAll(1)
-                timer("DoorClose"+Door:id(), Duration*1000)
-            }else{
-                stoptimer("TurnOffAlarm")
-                timer("TurnOffAlarm", AlarmDuration*1000)
-                Alarm = 1
-                UnwantedPlayer = Player
+            
+            if(IsScanner && Player != LastCheckedPlayer){
+                InfectionCode = Player:virus():toNumber()
+                LastCheckedPlayer = Player
+                
+                if(InfectionCode != -1 && InfectionCode < InfectionCodeMax){
+                    DoorEnt:soundPlay(1,1,"ambient/alarms/klaxon1.wav")  
+                    concmd("say /p WARNING: " + Player:name() + " is infected with " + getDisease(InfectionCode))
+                }else{
+                    DoorEnt:soundPlay(1,1,"tools/ifm/beep.wav")   
+                }
             }
         }else{
             UnwantedPlayer == owner()
         }
     }
-    
-    for(I=1,CheckPoints:count()){
-        CheckPoint = CheckPoints[I,entity]
-        InfectionCode = 0
-        
-        findIncludeClass("player")
-        findInSphere(CheckPoint:massCenter(), Distance)
-        Player = findClosest(CheckPoint:massCenter())
 
-        if(Player:isPlayer() && Player != LastCheckedPlayer){
-            InfectionCode = Player:virus():toNumber()
-            LastCheckedPlayer = Player
-            
-            if(InfectionCode != -1 && InfectionCode < 7){
-                CheckPoint:soundPlay(1,1,"ambient/alarms/klaxon1.wav")  
-                concmd("say /p WARNING: " + Player:name() + " is infected with " + getDisease(InfectionCode) + " at CheckPoint " + I)
-                
-                if(I == 1){
-                    DisableSecurityDoor = 0
-                    timer("enableSecurityDoor", 5000)
-                }
-            }else{
-                CheckPoint:soundPlay(1,1,"tools/ifm/beep.wav")   
-            }
-        }
-    }
-
-    timer("update", Update)
+    timer("update", Update*1000)
 }
 
-for(K = 1,Doors:count()) {
-    if(clk("DoorClose"+Doors[K,entity]:id():toString())) { 
-        Doors[K,entity]:setAlpha(255)    
-        Doors[K,entity]:noCollideAll(0)
+for(K = 1, DoorEntities:count()) {
+    DoorDataArray = DoorEntities[K,array]
+    DoorEnt = DoorDataArray[1, entity]
+        
+    if(clk("DoorClose"+DoorEnt:id():toString())) { 
+        DoorEnt:setAlpha(255)    
+        DoorEnt:noCollideAll(0)
     }   
 }
 
-if(clk("TurnOffAlarm")){
-    Alarm = 0
-}
-
-if(clk("Buttonoff")){
-    ButtonOutput = 0
-}
-
-if(clk("enableSecurityDoor")) {
-    DisableSecurityDoor = 1
-}
-
-if(clk("update10Seconds")) {
+if(clk("CheckDiseasesUpdate")) {
     checkPlayers()
-    timer("update10Seconds", 10000) 
+    timer("CheckDiseasesUpdate", CheckDiseasesUpdate*1000) 
 }
+
+#---------------------------------------------Handle Disconnect----------------------------------------
 
 if(disconnectClk()){
     Player = lastDisconnectedPlayer()
     
     for(Y = 1, AuthList:count()){
         if(Player == AuthList[Y,entity]){
-            hint("Player Disconnected!",5)
+            hint("Authorized player disconnected!",5)
             AuthList:remove(Y)
         }
     }
