@@ -3,7 +3,7 @@
 @persist AuthList:array
 @persist DoorEntities:table DoorLookupArray:array CheckDiseasesUpdate
 @persist Update InfectionCodeMax Distance OpenDoorDuration DoorAlpha UnwantedPlayer:entity PreviousPercent LastCheckedPlayer:entity
-
+if(first()){
 #----------------------------------------------Instructions-----------------------------------------
 # Report any issues to: Turner605#6669
 
@@ -213,7 +213,7 @@ function createScreen(){
 }
 
 #----------------------------------------------First Spawned-----------------------------------------
-
+}
 if (first()|dupefinished()){
     runOnDisconnect(1)
     runOnChat(1)
@@ -293,7 +293,7 @@ if(S[1,string]=="!rd" & chatClk(owner())){
 }
 
 #----------------------------------------------Check Players-----------------------------------------
-
+if(first()){
 function checkPlayers(){
     Players = players()
     PlayerCount = Players:count()
@@ -333,7 +333,7 @@ function checkPlayers(){
         InfectionPercentScreen:egpText(101,Percent:toString()+"%", vec2(200, 275))
     }
 }
-
+}
 #---------------------------------------------Check For Players----------------------------------------
 
 if(clk("update")) {
